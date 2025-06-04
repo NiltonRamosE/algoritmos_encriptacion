@@ -135,6 +135,29 @@ def cifrar_playfair(texto, clave):
         texto_cifrado += cifrar_par(par, matriz)
     return texto_cifrado
 
+# Descifrado César (inversa del cifrado)
+def descifrado_cesar_visual(texto, desplazamiento):
+    return cifrado_cesar_visual(texto, -desplazamiento)
+
+# Descifrado Playfair
+def descifrar_playfair(texto, clave):
+    matriz = crear_matriz_clave(clave)
+    pares = [(texto[i], texto[i+1]) for i in range(0, len(texto), 2)]
+    texto_descifrado = ""
+    for a, b in pares:
+        fila_a, col_a = buscar_posicion(a, matriz)
+        fila_b, col_b = buscar_posicion(b, matriz)
+        if fila_a == fila_b:
+            c1 = matriz[fila_a][(col_a - 1) % 5]
+            c2 = matriz[fila_b][(col_b - 1) % 5]
+        elif col_a == col_b:
+            c1 = matriz[(fila_a - 1) % 5][col_a]
+            c2 = matriz[(fila_b - 1) % 5][col_b]
+        else:
+            c1 = matriz[fila_a][col_b]
+            c2 = matriz[fila_b][col_a]
+        texto_descifrado += c1 + c2
+    return texto_descifrado
 # --- Rutas Flask ---
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -147,28 +170,43 @@ def index():
         algoritmo = request.form.get("algoritmo")
         clave = request.form.get("clave", "")
         desplazamiento = request.form.get("desplazamiento", "")
+        accion = request.form.get("accion", "cifrar")  # Nuevo campo
 
-        if algoritmo == "cesar":
-            try:
+        try:
+            if algoritmo == "cesar":
                 d = int(desplazamiento)
-                resultado, log = cifrado_cesar_visual(texto, d)
-            except ValueError:
-                error = "El desplazamiento debe ser un número entero."
-        elif algoritmo == "vigenere":
-            if not clave.isalpha():
-                error = "La clave debe contener solo letras para Vigenère."
+                if accion == "cifrar":
+                    resultado, log = cifrado_cesar_visual(texto, d)
+                else:
+                    resultado, log = descifrado_cesar_visual(texto, d)
+
+            elif algoritmo == "vigenere":
+                if not clave.isalpha():
+                    error = "La clave debe contener solo letras para Vigenère."
+                else:
+                    if accion == "cifrar":
+                        resultado, log = cifrar_vigenere(texto, clave)
+                    else:
+                        resultado, log = descifrar_vigenere(texto, clave)
+
+            elif algoritmo == "playfair":
+                if not clave.isalpha():
+                    error = "La clave debe contener solo letras para Playfair."
+                else:
+                    if accion == "cifrar":
+                        resultado = cifrar_playfair(texto, clave)
+                        log.append("Texto cifrado con Playfair generado.")
+                    else:
+                        resultado = descifrar_playfair(texto, clave)
+                        log.append("Texto descifrado con Playfair generado.")
             else:
-                resultado, log = cifrar_vigenere(texto, clave)
-        elif algoritmo == "playfair":
-            if not clave.isalpha():
-                error = "La clave debe contener solo letras para Playfair."
-            else:
-                resultado = cifrar_playfair(texto, clave)
-                log.append("Texto cifrado con Playfair generado.")
-        else:
-            error = "Algoritmo no válido."
+                error = "Algoritmo no válido."
+
+        except ValueError:
+            error = "Entrada inválida."
 
     return render_template("index.html", resultado=resultado, log=log, error=error)
+
 
 if __name__ == "__main__":
     app.run(debug=True)
