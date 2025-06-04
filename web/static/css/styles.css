@@ -201,3 +201,38 @@ select:focus {
   margin-bottom: 10px;
   color: #34495e;
 }
+
+.clave-deducida,
+.longitudes-posibles {
+    background-color: #f9f9ff;
+    border-left: 4px solid #4a90e2;
+    padding: 1rem 1.5rem;
+    margin: 1rem 0;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.clave-deducida strong,
+.longitudes-posibles strong {
+    color: #2c3e50;
+    font-size: 1.1rem;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.longitudes-posibles ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.longitudes-posibles li {
+    padding: 0.25rem 0;
+    border-bottom: 1px solid #eee;
+    color: #34495e;
+}
+
+.longitudes-posibles li:last-child {
+    border-bottom: none;
+}

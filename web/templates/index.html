@@ -16,6 +16,7 @@
         <div class="tab active" data-tab="cesar">Cifrado César</div>
         <div class="tab" data-tab="vigenere">Cifrado Vigenère</div>
         <div class="tab" data-tab="playfair">Cifrado Playfair</div>
+        <div class="tab" data-tab="kasiski">Método de Kasiski</div>
     </div>
 
     <div class="tab-content" id="cesar-tab">
@@ -82,6 +83,18 @@
         </form>
     </div>
 
+    <div class="tab-content" id="kasiski-tab" style="display:none;">
+        <form method="POST" id="form-kasiski">
+            <input type="hidden" name="algoritmo" value="kasiski" />
+
+            <label for="mensaje-kasiski">Mensaje cifrado con Vigenère:</label>
+            <textarea id="mensaje-kasiski" name="mensaje" rows="3" required>{{ request.form.get('mensaje') if request.form.get('algoritmo') == 'kasiski' else '' }}</textarea>
+
+            <button type="submit">Aplicar método de Kasiski</button>
+        </form>
+    </div>
+
+
     {% if error %}
         <div class="error">{{ error }}</div>
     {% endif %}
@@ -99,6 +112,23 @@
             {% for linea in log %}
                 <div>{{ linea }}</div>
             {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if clave %}
+        <div class="clave-deducida">
+            <strong>Clave deducida:</strong> {{ clave }}
+        </div>
+    {% endif %}
+
+    {% if longitudes %}
+        <div class="longitudes-posibles">
+            <strong>Longitudes posibles de la clave:</strong>
+            <ul>
+            {% for l in longitudes %}
+                <li>{{ l[0] }} (repetición: {{ l[1] }})</li>
+            {% endfor %}
+            </ul>
         </div>
     {% endif %}
 

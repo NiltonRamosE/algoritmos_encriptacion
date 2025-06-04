@@ -158,55 +158,133 @@ def descifrar_playfair(texto, clave):
             c2 = matriz[fila_b][col_a]
         texto_descifrado += c1 + c2
     return texto_descifrado
+
+# --- Funciones para Kasiski ---
+def limpiar_texto(texto):
+    return ''.join(c.upper() for c in texto if c.isalpha())
+
+def encontrar_repeticiones(texto, longitud_min=3):
+    repeticiones = {}
+    for i in range(len(texto) - longitud_min + 1):
+        subcadena = texto[i:i+longitud_min]
+        for j in range(i + 1, len(texto) - longitud_min + 1):
+            if texto[j:j+longitud_min] == subcadena:
+                if subcadena not in repeticiones:
+                    repeticiones[subcadena] = []
+                repeticiones[subcadena].append(j - i)
+    return repeticiones
+
+def obtener_factores(n):
+    return [i for i in range(2, n + 1) if n % i == 0]
+
+def kasiski_examination(texto, longitud_min=3):
+    repeticiones = encontrar_repeticiones(texto, longitud_min)
+    posibles_longitudes = {}
+    for distancias in repeticiones.values():
+        for distancia in distancias:
+            for factor in obtener_factores(distancia):
+                posibles_longitudes[factor] = posibles_longitudes.get(factor, 0) + 1
+    return sorted(posibles_longitudes.items(), key=lambda x: x[1], reverse=True)
+
+def dividir_en_grupos(texto, clave_len):
+    return [texto[i::clave_len] for i in range(clave_len)]
+
+def letra_mas_frecuente(texto):
+    frecuencias = {}
+    for letra in texto:
+        frecuencias[letra] = frecuencias.get(letra, 0) + 1
+    return max(frecuencias, key=frecuencias.get)
+
+def deducir_clave(grupos):
+    clave = ""
+    letra_esperada = 'E'  # Más frecuente en español
+    for grupo in grupos:
+        letra = letra_mas_frecuente(grupo)
+        desplazamiento = (ord(letra) - ord(letra_esperada)) % 26
+        clave += chr(ord('A') + desplazamiento)
+    return clave
+
+def descifrar_vigenere_kasiski(texto, clave):
+    texto_limpio = limpiar_texto(texto)
+    clave_repetida = (clave * (len(texto_limpio) // len(clave) + 1))[:len(texto_limpio)]
+    descifrado = ""
+    for i in range(len(texto_limpio)):
+        t = ord(texto_limpio[i]) - ord(clave_repetida[i])
+        descifrado += chr((t % 26) + ord('A'))
+    return descifrado
+
 # --- Rutas Flask ---
 @app.route("/", methods=["GET", "POST"])
 def index():
     resultado = None
     log = []
     error = None
+    clave = None
+    longitudes = None
+    mensaje = None
 
     if request.method == "POST":
-        texto = request.form.get("texto", "")
         algoritmo = request.form.get("algoritmo")
-        clave = request.form.get("clave", "")
-        desplazamiento = request.form.get("desplazamiento", "")
-        accion = request.form.get("accion", "cifrar")  # Nuevo campo
 
-        try:
-            if algoritmo == "cesar":
+        if algoritmo == "cesar":
+            texto = request.form.get("texto", "")
+            desplazamiento = request.form.get("desplazamiento", "")
+            accion = request.form.get("accion", "cifrar")
+
+            try:
                 d = int(desplazamiento)
                 if accion == "cifrar":
                     resultado, log = cifrado_cesar_visual(texto, d)
                 else:
                     resultado, log = descifrado_cesar_visual(texto, d)
+            except ValueError:
+                error = "Desplazamiento inválido."
 
-            elif algoritmo == "vigenere":
-                if not clave.isalpha():
-                    error = "La clave debe contener solo letras para Vigenère."
-                else:
-                    if accion == "cifrar":
-                        resultado, log = cifrar_vigenere(texto, clave)
-                    else:
-                        resultado, log = descifrar_vigenere(texto, clave)
+        elif algoritmo == "vigenere":
+            texto = request.form.get("texto", "")
+            clave = request.form.get("clave", "")
+            accion = request.form.get("accion", "cifrar")
 
-            elif algoritmo == "playfair":
-                if not clave.isalpha():
-                    error = "La clave debe contener solo letras para Playfair."
-                else:
-                    if accion == "cifrar":
-                        resultado = cifrar_playfair(texto, clave)
-                        log.append("Texto cifrado con Playfair generado.")
-                    else:
-                        resultado = descifrar_playfair(texto, clave)
-                        log.append("Texto descifrado con Playfair generado.")
+            if not clave.isalpha():
+                error = "La clave debe contener solo letras para Vigenère."
             else:
-                error = "Algoritmo no válido."
+                if accion == "cifrar":
+                    resultado, log = cifrar_vigenere(texto, clave)
+                else:
+                    resultado, log = descifrar_vigenere(texto, clave)
 
-        except ValueError:
-            error = "Entrada inválida."
+        elif algoritmo == "playfair":
+            texto = request.form.get("texto", "")
+            clave = request.form.get("clave", "")
+            accion = request.form.get("accion", "cifrar")
 
-    return render_template("index.html", resultado=resultado, log=log, error=error)
+            if not clave.isalpha():
+                error = "La clave debe contener solo letras para Playfair."
+            else:
+                if accion == "cifrar":
+                    resultado = cifrar_playfair(texto, clave)
+                    log.append("Texto cifrado con Playfair generado.")
+                else:
+                    resultado = descifrar_playfair(texto, clave)
+                    log.append("Texto descifrado con Playfair generado.")
 
+        elif algoritmo == "kasiski":
+            mensaje = request.form.get("mensaje", "")
+            texto_limpio = limpiar_texto(mensaje)
+            resultados = kasiski_examination(texto_limpio)
+            if resultados:
+                longitudes = resultados[:5]
+                clave_len = resultados[0][0]
+                grupos = dividir_en_grupos(texto_limpio, clave_len)
+                clave = deducir_clave(grupos)
+                resultado = descifrar_vigenere_kasiski(mensaje, clave)
+            else:
+                resultado = "❌ No se encontraron repeticiones útiles para aplicar el método de Kasiski."
+
+        else:
+            error = "Algoritmo no válido."
+
+    return render_template("index.html", resultado=resultado, log=log, error=error, clave=clave, longitudes=longitudes, mensaje=mensaje)
 
 if __name__ == "__main__":
     app.run(debug=True)
